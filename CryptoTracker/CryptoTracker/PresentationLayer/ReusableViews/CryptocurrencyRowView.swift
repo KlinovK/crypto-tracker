@@ -8,10 +8,13 @@
 import SwiftUI
 
 struct CryptocurrencyRowView: View {
+    
     let cryptocurrency: Cryptocurrency
     let isFavorite: Bool
     let onFavoriteToggle: () -> Void
     let onTap: () -> Void
+    
+    private let priceFormatter = CryptocurrencyPriceFormatter.shared
     
     var body: some View {
         HStack {
@@ -36,13 +39,29 @@ struct CryptocurrencyRowView: View {
             Spacer()
             
             VStack(alignment: .trailing, spacing: 4) {
-                Text("$\(cryptocurrency.currentPrice, specifier: "%.2f")")
+                // Use price formatter
+                Text(priceFormatter.formatPrice(cryptocurrency.currentPrice))
                     .font(.headline)
+                    .fontWeight(.medium)
                 
+                // Show 24h high/low if available
+                if let high = cryptocurrency.high24h, let low = cryptocurrency.low24h {
+                    HStack(spacing: 4) {
+                        Text("H: \(priceFormatter.formatPrice(high))")
+                            .font(.caption2)
+                            .foregroundColor(.green)
+                        Text("L: \(priceFormatter.formatPrice(low))")
+                            .font(.caption2)
+                            .foregroundColor(.red)
+                    }
+                }
+                
+                // Show percentage change
                 if let change = cryptocurrency.priceChangePercentage24h {
-                    Text("\(change, specifier: "%.2f")%")
+                    Text(priceFormatter.formatPercentageChange(change))
                         .font(.caption)
-                        .foregroundColor(change >= 0 ? .green : .red)
+                        .fontWeight(.medium)
+                        .foregroundColor(priceFormatter.colorForPercentageChange(change))
                 }
             }
             
@@ -59,3 +78,4 @@ struct CryptocurrencyRowView: View {
         .padding(.vertical, 4)
     }
 }
+

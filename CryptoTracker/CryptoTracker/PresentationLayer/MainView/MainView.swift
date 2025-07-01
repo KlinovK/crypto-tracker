@@ -81,28 +81,24 @@ struct MainView: View {
     }
     
     private func configureTabBarAppearance() {
-         let appearance = UITabBarAppearance()
-         
-         // Configure background
-         appearance.configureWithOpaqueBackground()
-        appearance.backgroundColor = UIColor.gray // Tab bar background color
-         
-         // Configure normal (unselected) tab items
-         appearance.stackedLayoutAppearance.normal.iconColor = UIColor.white
-         appearance.stackedLayoutAppearance.normal.titleTextAttributes = [
-             .foregroundColor: UIColor.white
-         ]
-         
-         // Configure selected tab items
-         appearance.stackedLayoutAppearance.selected.iconColor = UIColor.systemYellow
-         appearance.stackedLayoutAppearance.selected.titleTextAttributes = [
-             .foregroundColor: UIColor.systemYellow
-         ]
-         
-         // Apply to all tab bars
-         UITabBar.appearance().standardAppearance = appearance
-         UITabBar.appearance().scrollEdgeAppearance = appearance
-     }
+        let appearance = UITabBarAppearance()
+        
+        appearance.configureWithOpaqueBackground()
+        appearance.backgroundColor = UIColor.gray
+        
+        appearance.stackedLayoutAppearance.normal.iconColor = UIColor.white
+        appearance.stackedLayoutAppearance.normal.titleTextAttributes = [
+            .foregroundColor: UIColor.white
+        ]
+        
+        appearance.stackedLayoutAppearance.selected.iconColor = UIColor.systemYellow
+        appearance.stackedLayoutAppearance.selected.titleTextAttributes = [
+            .foregroundColor: UIColor.systemYellow
+        ]
+        
+        UITabBar.appearance().standardAppearance = appearance
+        UITabBar.appearance().scrollEdgeAppearance = appearance
+    }
     
 }
 

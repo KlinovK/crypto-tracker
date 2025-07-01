@@ -49,23 +49,82 @@ class NetworkService: NetworkServiceProtocol {
     }
     
     func fetchPriceHistory(coinId: String, days: String) async throws -> [PricePoint] {
-        let url = URL(string: "\(baseURL)/coins/\(coinId)/market_chart?vs_currency=usd&days=\(days)")!
+        // Debug: Print the URL being requested
+        let urlString = "\(baseURL)/coins/\(coinId)/market_chart?vs_currency=usd&days=\(days)"
+        print("🔍 Requesting URL: \(urlString)")
         
-        let (data, response) = try await session.data(from: url)
-        
-        guard let httpResponse = response as? HTTPURLResponse,
-              200...299 ~= httpResponse.statusCode else {
-            throw NetworkError.invalidResponse
+        guard let url = URL(string: urlString) else {
+            print("❌ Invalid URL: \(urlString)")
+            throw NetworkError.invalidURL
         }
         
-        let json = try JSONSerialization.jsonObject(with: data) as? [String: Any]
-        let prices = json?["prices"] as? [[Double]] ?? []
-        
-        return prices.compactMap { priceData in
-            guard priceData.count >= 2 else { return nil }
-            let timestamp = Date(timeIntervalSince1970: priceData[0] / 1000)
-            let price = priceData[1]
-            return PricePoint(timestamp: timestamp, price: price)
+        do {
+            let (data, response) = try await session.data(from: url)
+            
+            // Debug: Print response details
+            if let httpResponse = response as? HTTPURLResponse {
+                print("📡 Response Status: \(httpResponse.statusCode)")
+                print("📡 Response Headers: \(httpResponse.allHeaderFields)")
+            }
+            
+            guard let httpResponse = response as? HTTPURLResponse else {
+                print("❌ Not an HTTP response")
+                throw NetworkError.invalidResponse
+            }
+            
+            // Check for specific error status codes
+            switch httpResponse.statusCode {
+            case 200...299:
+                print("✅ Success response: \(httpResponse.statusCode)")
+            case 400:
+                print("❌ Bad Request (400) - Check coinId: '\(coinId)' and days: '\(days)'")
+                throw NetworkError.invalidResponse
+            case 404:
+                print("❌ Not Found (404) - Coin '\(coinId)' may not exist")
+                throw NetworkError.invalidResponse
+            case 429:
+                print("❌ Rate Limited (429) - Too many requests")
+                throw NetworkError.invalidResponse
+            default:
+                print("❌ HTTP Error: \(httpResponse.statusCode)")
+                throw NetworkError.invalidResponse
+            }
+            
+            // Debug: Print response data
+            if let responseString = String(data: data, encoding: .utf8) {
+                print("📄 Response Data (first 200 chars): \(String(responseString.prefix(200)))")
+            }
+            
+            do {
+                let json = try JSONSerialization.jsonObject(with: data) as? [String: Any]
+                let prices = json?["prices"] as? [[Double]] ?? []
+                
+                print("📊 Found \(prices.count) price points")
+                
+               
+                let pricePoints = prices.enumerated().compactMap { (index, priceData) -> PricePoint? in
+                    guard priceData.count >= 2 else { return nil }
+                    let timestamp = Date(timeIntervalSince1970: priceData[0] / 1000)
+                    let price = priceData[1]
+                    
+                    // Validate the price is reasonable
+                    guard price > 0 && price.isFinite else { return nil }
+                    
+                    return PricePoint(index: index, price: price, timestamp: timestamp)
+                }
+                print("✅ Processed \(pricePoints.count) valid price points")
+                
+                // Sort by timestamp to ensure proper chart rendering
+                return pricePoints.sorted { ($0.timestamp ?? .now) < ($1.timestamp ?? .now) }
+                
+            } catch {
+                print("❌ JSON Parsing Error: \(error)")
+                throw NetworkError.decodingError
+            }
+            
+        } catch {
+            print("❌ Network Error: \(error)")
+            throw error
         }
     }
 }

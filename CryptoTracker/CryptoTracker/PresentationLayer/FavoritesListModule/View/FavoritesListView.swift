@@ -56,7 +56,6 @@ struct FavoritesListView: View {
                         }
                     }
                     .listStyle(.plain)
-                    .scrollContentBackground(.hidden)
                     .background(Color(.systemGroupedBackground))
                     .refreshable {
                         await viewModel.refreshFavorites()

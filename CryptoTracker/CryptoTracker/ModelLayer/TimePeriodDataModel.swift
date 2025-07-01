@@ -8,15 +8,23 @@
 import Foundation
 
 enum TimePeriod: String, CaseIterable {
-    case day = "1"
-    case week = "7"
-    case month = "30"
+    case oneDay = "1"
+    case oneWeek = "7"
+    case oneMonth = "30"
+    case threeMonths = "90"
+    case oneYear = "365"
     
     var displayName: String {
         switch self {
-        case .day: return "1D"
-        case .week: return "7D"
-        case .month: return "30D"
+        case .oneDay: return "1D"
+        case .oneWeek: return "7D"
+        case .oneMonth: return "1M"
+        case .threeMonths: return "3M"
+        case .oneYear: return "1Y"
         }
+    }
+    
+    var apiValue: String {
+        return self.rawValue
     }
 }

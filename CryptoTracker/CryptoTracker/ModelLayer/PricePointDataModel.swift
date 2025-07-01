@@ -9,6 +9,13 @@ import Foundation
 
 struct PricePoint: Identifiable {
     let id = UUID()
-    let timestamp: Date
+    let index: Int
     let price: Double
+    let timestamp: Date?
+    
+    init(index: Int, price: Double, timestamp: Date? = nil) {
+        self.index = index
+        self.price = price
+        self.timestamp = timestamp
+    }
 }
