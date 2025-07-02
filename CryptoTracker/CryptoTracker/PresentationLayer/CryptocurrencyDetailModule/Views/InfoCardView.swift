@@ -32,7 +32,7 @@ struct InfoCardView: View {
                 .foregroundColor(.secondary)
             
             if let largeNumber = largeNumber {
-                Text(formatLargeNumber(largeNumber))
+                Text(CryptocurrencyPriceFormatter.shared.formatLargeNumber(largeNumber))
                     .font(.headline)
                     .fontWeight(.semibold)
             } else if let currencyValue = currencyValue {
@@ -53,20 +53,4 @@ struct InfoCardView: View {
         )
     }
     
-    private func formatLargeNumber(_ number: Double) -> String {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .currency
-        formatter.currencySymbol = "$"
-        formatter.maximumFractionDigits = 0
-        
-        if number >= 1e12 {
-            return formatter.string(from: NSNumber(value: number / 1e12))?.replacingOccurrences(of: "$", with: "$") ?? "$0" + "T"
-        } else if number >= 1e9 {
-            return formatter.string(from: NSNumber(value: number / 1e9))?.replacingOccurrences(of: "$", with: "$") ?? "$0" + "B"
-        } else if number >= 1e6 {
-            return formatter.string(from: NSNumber(value: number / 1e6))?.replacingOccurrences(of: "$", with: "$") ?? "$0" + "M"
-        } else {
-            return formatter.string(from: NSNumber(value: number)) ?? "$0"
-        }
-    }
 }

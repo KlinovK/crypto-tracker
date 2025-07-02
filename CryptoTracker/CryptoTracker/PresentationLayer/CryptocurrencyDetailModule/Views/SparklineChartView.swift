@@ -25,6 +25,9 @@ struct SparklineChartView: View {
         let xDomain = 0...(prices.count - 1)
         let priceChange = (prices.last ?? 0) >= (prices.first ?? 0)
         
+        // Get optimal tick count for this price range
+        let yAxisTickCount = CryptocurrencyPriceFormatter.shared.getOptimalYAxisTickCount(minPrice: paddedMin, maxPrice: paddedMax)
+        
         Chart(pricePoints) { point in
             LineMark(
                 x: .value("Time", point.index),
@@ -44,14 +47,17 @@ struct SparklineChartView: View {
             }
         }
         .chartYAxis {
-            AxisMarks(position: .trailing) { value in
+            AxisMarks(
+                position: .trailing,
+                values: .automatic(desiredCount: yAxisTickCount)
+            ) { value in
                 AxisGridLine()
                     .foregroundStyle(.gray.opacity(0.3))
                 AxisTick()
                     .foregroundStyle(.gray.opacity(0.5))
                 AxisValueLabel {
                     if let price = value.as(Double.self) {
-                        Text("$\(price, specifier: "%.0f")")
+                        Text(CryptocurrencyPriceFormatter.shared.formatYAxisPrice(price))
                             .font(.caption2)
                             .foregroundColor(.secondary)
                     }
