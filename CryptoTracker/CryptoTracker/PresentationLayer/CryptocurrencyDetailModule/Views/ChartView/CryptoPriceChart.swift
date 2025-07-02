@@ -13,6 +13,7 @@ struct CryptoPriceChart: View {
     let priceHistory: [Double]
     let isLoading: Bool
     let timeRange: String
+    let error: String
     
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -38,7 +39,7 @@ struct CryptoPriceChart: View {
                             Image(systemName: "chart.line.uptrend.xyaxis")
                                 .font(.title)
                                 .foregroundColor(.gray)
-                            Text("No chart data available")
+                            Text(error)
                                 .font(.caption)
                                 .foregroundColor(.secondary)
                         }

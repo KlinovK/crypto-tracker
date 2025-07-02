@@ -60,7 +60,7 @@ class CryptocurrencyDetailViewModel: ObservableObject {
             
         } catch {
             print("❌ Failed to load price history: \(error.localizedDescription)")
-            errorMessage = "Failed to load price history. Please try again later."
+            errorMessage = "\(error.localizedDescription)"
             priceHistory = []
         }
 

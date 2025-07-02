@@ -145,7 +145,8 @@ struct CryptocurrencyDetailView: View {
         CryptoPriceChart(
             priceHistory: viewModel.priceHistory,
             isLoading: viewModel.isLoading,
-            timeRange: viewModel.selectedTimePeriod.rawValue
+            timeRange: viewModel.selectedTimePeriod.rawValue,
+            error: viewModel.errorMessage ?? "No chart data available"
         )
     }
     
