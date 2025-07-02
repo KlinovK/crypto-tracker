@@ -6,65 +6,65 @@
 //
 
 import Foundation
+import Combine
 
 protocol FavoritesServiceProtocol {
     func addToFavorites(_ crypto: Cryptocurrency)
     func removeFromFavorites(_ crypto: Cryptocurrency)
     func isFavorite(_ crypto: Cryptocurrency) -> Bool
     func getFavorites() -> [String]
+    func favoritesDidChangeStream() -> AsyncStream<Void>
 }
 
-class FavoritesService: FavoritesServiceProtocol, ObservableObject {
-    @Published var favoriteIds: Set<String> = []
-    
+class FavoritesService: FavoritesServiceProtocol {
+
+    private var changeContinuation: AsyncStream<Void>.Continuation?
+    private let changeStream: AsyncStream<Void>
+
     private let userDefaults = UserDefaults.standard
     private let favoritesKey = "FavoriteCryptocurrencies"
-    
+
+    private var favoriteIds: Set<String> = []
+
     init() {
+        var continuation: AsyncStream<Void>.Continuation?
+        self.changeStream = AsyncStream<Void> { cont in
+            continuation = cont
+        }
+        self.changeContinuation = continuation
         loadFavorites()
     }
-    
+
     func addToFavorites(_ crypto: Cryptocurrency) {
         favoriteIds.insert(crypto.id)
         saveFavorites()
+        changeContinuation?.yield()
     }
-    
+
     func removeFromFavorites(_ crypto: Cryptocurrency) {
         favoriteIds.remove(crypto.id)
         saveFavorites()
+        changeContinuation?.yield()
     }
-    
+
     func isFavorite(_ crypto: Cryptocurrency) -> Bool {
         favoriteIds.contains(crypto.id)
     }
-    
+
     func getFavorites() -> [String] {
         Array(favoriteIds)
     }
-    
+
     private func saveFavorites() {
         userDefaults.set(Array(favoriteIds), forKey: favoritesKey)
     }
-    
+
     private func loadFavorites() {
         let favorites = userDefaults.stringArray(forKey: favoritesKey) ?? []
         favoriteIds = Set(favorites)
     }
-}
 
-extension FavoritesService {
-    var favoritesDidChange: AsyncStream<Void> {
-        AsyncStream { continuation in
-            let task = Task {
-                while !Task.isCancelled {
-                    try? await Task.sleep(nanoseconds: 1_000_000_000)
-                    continuation.yield(())
-                }
-            }
-            
-            continuation.onTermination = { _ in
-                task.cancel()
-            }
-        }
+    func favoritesDidChangeStream() -> AsyncStream<Void> {
+        changeStream
     }
 }

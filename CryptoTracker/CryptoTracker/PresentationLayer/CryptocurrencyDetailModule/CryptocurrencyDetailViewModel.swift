@@ -11,7 +11,7 @@ import SwiftUI
 class CryptocurrencyDetailViewModel: ObservableObject {
 
     private let networkService: NetworkServiceProtocol
-    private let favoritesService: FavoritesService
+    private let favoritesService: FavoritesServiceProtocol
 
     var cryptocurrency: Cryptocurrency
     @Published var priceHistory: [Double] = []
@@ -22,7 +22,7 @@ class CryptocurrencyDetailViewModel: ObservableObject {
     private var favoriteIds = Set<String>()
     private var priceHistoryCache: [TimePeriod: [Double]] = [:]
 
-    init(cryptocurrency: Cryptocurrency, networkService: NetworkServiceProtocol, favoritesService: FavoritesService) {
+    init(cryptocurrency: Cryptocurrency, networkService: NetworkServiceProtocol, favoritesService: FavoritesServiceProtocol) {
         self.cryptocurrency = cryptocurrency
         self.networkService = networkService
         self.favoritesService = favoritesService
@@ -49,18 +49,27 @@ class CryptocurrencyDetailViewModel: ObservableObject {
         isLoading = true
         errorMessage = nil
 
+        // 🔌 Check network connectivity
+        guard NetworkMonitor.shared.isConnected else {
+            errorMessage = "No internet connection. Please try again when you're back online."
+            priceHistory = []
+            isLoading = false
+            return
+        }
+
         do {
             let pricePoints = try await networkService.fetchPriceHistory(
                 coinId: cryptocurrency.id,
                 days: selectedTimePeriod.rawValue
             )
-            
+
             let prices = pricePoints.map { $0.price }
             priceHistory = prices
-            
+            priceHistoryCache[selectedTimePeriod] = prices
+
         } catch {
             print("❌ Failed to load price history: \(error.localizedDescription)")
-            errorMessage = "\(error.localizedDescription)"
+            errorMessage = "Failed to fetch price history: \(error.localizedDescription)"
             priceHistory = []
         }
 

@@ -5,7 +5,7 @@
 //  Created by Константин Клинов on 30/06/25.
 //
 
-import Foundation
+import SwiftUI
 
 @MainActor
 class CryptocurrencyListViewModel: ObservableObject {
@@ -43,15 +43,21 @@ class CryptocurrencyListViewModel: ObservableObject {
         }
     }
     
-    private let networkService: NetworkServiceProtocol
-    private let favoritesService: FavoritesService
+    let networkService: NetworkServiceProtocol
+    let favoritesService: FavoritesServiceProtocol
+    
     private var currentPage = 1
     private var searchTask: Task<Void, Never>?
     private var favoritesObservationTask: Task<Void, Never>?
     
-    init(networkService: NetworkServiceProtocol, favoritesService: FavoritesService) {
+    init(
+        networkService: NetworkServiceProtocol,
+        favoritesService: FavoritesServiceProtocol
+        
+    ) {
         self.networkService = networkService
         self.favoritesService = favoritesService
+        
         
         setupFavoritesObservation()
     }
@@ -64,16 +70,45 @@ class CryptocurrencyListViewModel: ObservableObject {
     func loadCryptocurrencies() async {
         isLoading = true
         errorMessage = nil
-        
-        do {
-            let cryptos = try await networkService.fetchCryptocurrencies(page: 1, sortBy: sortOption)
-            cryptocurrencies = cryptos
-            currentPage = 1
-            await filterAndSortCryptocurrencies()
-        } catch {
-            errorMessage = error.localizedDescription
+
+        let isConnected = NetworkMonitor.shared.isConnected
+
+        if isConnected {
+            do {
+                let cryptos = try await networkService.fetchCryptocurrencies(page: 1, sortBy: sortOption)
+                cryptocurrencies = cryptos
+                currentPage = 1
+                DataStorageService.shared.save(cryptos)
+                await filterAndSortCryptocurrencies()
+
+                print("✅ Fetched from API and saved to Core Data.")
+
+            } catch {
+                errorMessage = error.localizedDescription
+                print("❌ API fetch failed: \(error.localizedDescription)")
+
+                let cached = DataStorageService.shared.fetchCryptocurrencies()
+                if !cached.isEmpty {
+                    cryptocurrencies = cached
+                    await filterAndSortCryptocurrencies()
+                    print("⚠️ Using cached data from Core Data after API failure.")
+                }
+            }
+
+        } else {
+            let cached = DataStorageService.shared.fetchCryptocurrencies()
+            if !cached.isEmpty {
+                cryptocurrencies = cached
+                currentPage = 1
+                await filterAndSortCryptocurrencies()
+
+                print("📴 Offline: Loaded \(cached.count) cryptocurrencies from Core Data.")
+            } else {
+                errorMessage = "No internet and no local data available."
+                print("❌ Offline and no local data.")
+            }
         }
-        
+
         isLoading = false
     }
     
@@ -98,21 +133,16 @@ class CryptocurrencyListViewModel: ObservableObject {
         await loadCryptocurrencies()
     }
     
-    // NEW: Method to apply sorting without reloading all data
     func applySorting(_ newSortOption: SortOption) async {
         guard sortOption != newSortOption else { return }
         
         sortOption = newSortOption
         
-        // If you want server-side sorting for new data loads, reload
-        // Otherwise, just apply client-side sorting to existing data
         if cryptocurrencies.isEmpty {
             await loadCryptocurrencies()
         } else {
-            // For immediate feedback, apply client-side sorting first
             await filterAndSortCryptocurrencies()
             
-            // Then optionally reload with server-side sorting in background
             Task {
                 await loadCryptocurrencies()
             }
@@ -123,22 +153,19 @@ class CryptocurrencyListViewModel: ObservableObject {
         favoritesObservationTask = Task { [weak self] in
             guard let self = self else { return }
             
-            for await _ in self.favoritesService.favoritesDidChange {
+            for await _ in self.favoritesService.favoritesDidChangeStream() {
                 await self.filterAndSortCryptocurrencies()
             }
         }
     }
     
-    // CHANGED: Renamed and enhanced to handle both filtering and sorting
     private func filterAndSortCryptocurrencies() async {
         var filtered = cryptocurrencies
         
-        // Apply favorites filter
         if showingFavoritesOnly {
             filtered = filtered.filter { favoritesService.isFavorite($0) }
         }
         
-        // Apply search filter
         if !searchText.isEmpty {
             filtered = filtered.filter {
                 $0.name.localizedCaseInsensitiveContains(searchText) ||
@@ -146,13 +173,11 @@ class CryptocurrencyListViewModel: ObservableObject {
             }
         }
         
-        // Apply client-side sorting (as backup/immediate feedback)
         filtered = sortCryptocurrencies(filtered, by: sortOption)
         
         filteredCryptocurrencies = filtered
     }
     
-    // NEW: Client-side sorting implementation
     private func sortCryptocurrencies(_ cryptos: [Cryptocurrency], by sortOption: SortOption) -> [Cryptocurrency] {
         switch sortOption {
         case .marketCap:
