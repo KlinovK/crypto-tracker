@@ -8,28 +8,34 @@
 import Foundation
 import CoreData
 
+/// A Core Data service for managing cryptocurrency data.
 final class DataStorageService {
-
-    // MARK: - Singleton
+    
+    // MARK: - Singleton Instance
+    
     static let shared = DataStorageService()
 
-    // MARK: - Properties
+    // MARK: - Core Data Stack
+    
     let container: NSPersistentContainer
 
+    /// Shortcut to main view context.
     var context: NSManagedObjectContext {
         container.viewContext
     }
 
-    // MARK: - Initializer
+    // MARK: - Initialization
+    
+    /// Initializes the persistent container with optional in-memory store (for testing).
     private init(inMemory: Bool = false) {
         container = NSPersistentContainer(name: "CryptoTrackerDataModel")
-
+        
         if inMemory {
             container.persistentStoreDescriptions.first?.url = URL(fileURLWithPath: "/dev/null")
         }
 
-        container.loadPersistentStores { description, error in
-            if let error = error {
+        container.loadPersistentStores { _, error in
+            if let error {
                 fatalError("❌ Failed to load persistent stores: \(error.localizedDescription)")
             }
         }
@@ -38,71 +44,68 @@ final class DataStorageService {
         container.viewContext.automaticallyMergesChangesFromParent = true
     }
 
-    // MARK: - Public API
+    // MARK: - Saving
 
+    /// Saves changes in the main context if any exist.
     func saveContext() throws {
-        let context = container.viewContext
         if context.hasChanges {
             try context.save()
         }
     }
 
+    // MARK: - Fetching
+
+    /// Fetches all stored cryptocurrencies.
     func fetchCryptocurrencies() -> [Cryptocurrency] {
         let request: NSFetchRequest<CryptocurrencyEntity> = CryptocurrencyEntity.fetchRequest()
+        
         do {
-            let entities = try context.fetch(request)
-            return entities.compactMap { Cryptocurrency(entity: $0) }
+            return try context.fetch(request).compactMap(Cryptocurrency.init)
         } catch {
-            print("❌ Core Data fetch failed: \(error.localizedDescription)")
+            print("❌ Failed to fetch cryptocurrencies: \(error.localizedDescription)")
             return []
         }
     }
-    
+
+    /// Returns the count of cryptocurrency entities matching the given predicate.
     func countCryptocurrencies(with predicate: NSPredicate? = nil) throws -> Int {
         let request: NSFetchRequest<CryptocurrencyEntity> = CryptocurrencyEntity.fetchRequest()
         request.predicate = predicate
         return try context.count(for: request)
     }
 
+    // MARK: - Deleting
+
+    /// Deletes a given cryptocurrency entity from the main context.
     func deleteCryptocurrency(_ object: CryptocurrencyEntity) {
         context.delete(object)
     }
 
+    // MARK: - Saving Bulk Data
+
+    /// Saves or updates a batch of cryptocurrencies in the background.
     func save(_ cryptocurrencies: [Cryptocurrency]) {
         container.performBackgroundTask { context in
             context.mergePolicy = NSMergeByPropertyObjectTrumpMergePolicy
-
+            
             for crypto in cryptocurrencies {
-                let fetchRequest: NSFetchRequest<CryptocurrencyEntity> = CryptocurrencyEntity.fetchRequest()
-                fetchRequest.predicate = NSPredicate(format: "id == %@", crypto.id)
-                fetchRequest.fetchLimit = 1
+                let request: NSFetchRequest<CryptocurrencyEntity> = CryptocurrencyEntity.fetchRequest()
+                request.predicate = NSPredicate(format: "id == %@", crypto.id)
+                request.fetchLimit = 1
 
-                let existingEntity = try? context.fetch(fetchRequest).first
-                let entity = existingEntity ?? CryptocurrencyEntity(context: context)
-
-                entity.id = crypto.id
-                entity.name = crypto.name
-                entity.symbol = crypto.symbol
-                entity.image = crypto.image
-                entity.currentPrice = crypto.currentPrice
-                entity.marketCap = crypto.marketCap ?? 0
-                entity.totalVolume = crypto.totalVolume ?? 0
-                entity.priceChangePercentage = crypto.priceChangePercentage24h ?? 0
-                entity.high24h = crypto.high24h ?? 0
-                entity.low24h = crypto.low24h ?? 0
-                entity.circulatingSupply = crypto.circulatingSupply ?? 0
-                entity.maxSupply = crypto.maxSupply ?? 0
+                let entity = (try? context.fetch(request).first) ?? CryptocurrencyEntity(context: context)
+                crypto.update(entity)
             }
 
             do {
                 try context.save()
             } catch {
-                print("❌ Failed to save cryptocurrencies to Core Data in background: \(error.localizedDescription)")
+                print("❌ Failed to save cryptocurrencies: \(error.localizedDescription)")
             }
         }
     }
     
-    public func getFavoriteCryptocurrencies(ids: [String]) -> [Cryptocurrency] {
+    func getFavoriteCryptocurrencies(ids: [String]) -> [Cryptocurrency] {
         let request: NSFetchRequest<CryptocurrencyEntity> = CryptocurrencyEntity.fetchRequest()
         request.predicate = NSPredicate(format: "id IN %@", ids)
 

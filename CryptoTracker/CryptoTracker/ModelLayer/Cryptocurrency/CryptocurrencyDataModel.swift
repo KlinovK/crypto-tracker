@@ -69,6 +69,11 @@ class Cryptocurrency: Codable, Identifiable, Equatable {
 }
 
 extension Cryptocurrency {
+    
+    /// Initializes a `Cryptocurrency` model from a `CryptocurrencyEntity` (Core Data).
+    ///
+    /// - Parameter entity: The Core Data entity.
+    /// - Returns: A `Cryptocurrency` instance or `nil` if required fields are missing.
     convenience init?(entity: CryptocurrencyEntity) {
         guard let id = entity.id,
               let symbol = entity.symbol,
@@ -79,7 +84,8 @@ extension Cryptocurrency {
 
         self.init(
             id: id,
-            name: name, symbol: symbol,
+            name: name,
+            symbol: symbol,
             image: image,
             currentPrice: entity.currentPrice,
             marketCap: entity.marketCap,
@@ -90,6 +96,24 @@ extension Cryptocurrency {
             circulatingSupply: entity.circulatingSupply,
             maxSupply: entity.maxSupply
         )
+    }
+    
+    /// Updates a `CryptocurrencyEntity` with the current model's data.
+    ///
+    /// - Parameter entity: The Core Data entity to update.
+    func update(_ entity: CryptocurrencyEntity) {
+        entity.id = self.id
+        entity.name = self.name
+        entity.symbol = self.symbol
+        entity.image = self.image
+        entity.currentPrice = self.currentPrice
+        entity.marketCap = self.marketCap ?? 0
+        entity.totalVolume = self.totalVolume ?? 0
+        entity.priceChangePercentage = self.priceChangePercentage24h ?? 0
+        entity.high24h = self.high24h ?? 0
+        entity.low24h = self.low24h ?? 0
+        entity.circulatingSupply = self.circulatingSupply ?? 0
+        entity.maxSupply = self.maxSupply ?? 0
     }
 }
 

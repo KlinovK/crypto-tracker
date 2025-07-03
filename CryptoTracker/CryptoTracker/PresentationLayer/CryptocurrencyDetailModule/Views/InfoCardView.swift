@@ -32,7 +32,7 @@ struct InfoCardView: View {
                 .foregroundColor(.secondary)
             
             if let largeNumber = largeNumber {
-                Text(CryptocurrencyPriceFormatter.shared.formatLargeNumber(largeNumber))
+                Text(CryptocurrencyPriceFormatter.shared.formatPrice(largeNumber))
                     .font(.headline)
                     .fontWeight(.semibold)
             } else if let currencyValue = currencyValue {

@@ -8,6 +8,7 @@
 import SwiftUI
 
 struct CryptocurrencyListView: View {
+    
     @ObservedObject var viewModel: CryptocurrencyListViewModel
     @EnvironmentObject var coordinator: AppCoordinator
     @State private var showingSortOptions = false

@@ -8,30 +8,29 @@
 import Foundation
 import Network
 
+/// Monitors the device's internet connectivity status in real-time.
 final class NetworkMonitor: ObservableObject {
+    
+    /// Shared singleton instance.
     static let shared = NetworkMonitor()
-
+    
+    /// Indicates whether the device is currently connected to the internet.
     @Published private(set) var isConnected: Bool = true
 
-    private let monitor: NWPathMonitor
-    private let monitorQueue = DispatchQueue(label: "NetworkMonitorQueue")
-
+    // MARK: - Private Properties
+    
+    private let monitor = NWPathMonitor()
+    private let queue = DispatchQueue(label: "NetworkMonitorQueue")
+    
+    // MARK: - Initializer
+    
     private init() {
-        self.monitor = NWPathMonitor()
-        startMonitoring()
-    }
-
-    private func startMonitoring() {
         monitor.pathUpdateHandler = { [weak self] path in
-            guard let self = self else { return }
-
             DispatchQueue.main.async {
-                let connected = path.status == .satisfied
-                self.isConnected = connected
+                self?.isConnected = (path.status == .satisfied)
             }
         }
-
-        monitor.start(queue: monitorQueue)
+        monitor.start(queue: queue)
     }
 
     deinit {
