@@ -101,4 +101,17 @@ final class DataStorageService {
             }
         }
     }
+    
+    public func getFavoriteCryptocurrencies(ids: [String]) -> [Cryptocurrency] {
+        let request: NSFetchRequest<CryptocurrencyEntity> = CryptocurrencyEntity.fetchRequest()
+        request.predicate = NSPredicate(format: "id IN %@", ids)
+
+        do {
+            let entities = try context.fetch(request)
+            return entities.compactMap { Cryptocurrency(entity: $0) }
+        } catch {
+            print("❌ Failed to fetch favorite cryptocurrencies: \(error.localizedDescription)")
+            return []
+        }
+    }
 }

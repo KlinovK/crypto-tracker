@@ -1,5 +1,5 @@
 //
-//  ContentView.swift
+//  TabBarView.swift
 //  CryptoTracker
 //
 //  Created by Константин Клинов on 30/06/25.
@@ -7,10 +7,10 @@
 
 import SwiftUI
 
-struct MainView: View {
+struct TabBarView: View {
 
     @EnvironmentObject var coordinator: AppCoordinator
-    @StateObject private var viewModel: MainViewModel
+    @StateObject private var viewModel: TabBarViewModel
 
     // MARK: - Init
 
@@ -18,7 +18,7 @@ struct MainView: View {
         networkService: NetworkServiceProtocol = NetworkService(),
         favoritesService: FavoritesServiceProtocol = FavoritesService()
     ) {
-        _viewModel = StateObject(wrappedValue: MainViewModel(
+        _viewModel = StateObject(wrappedValue: TabBarViewModel(
             networkService: networkService,
             favoritesService: favoritesService
         ))

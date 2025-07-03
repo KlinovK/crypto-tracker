@@ -1,14 +1,15 @@
 //
-//  MainViewModel.swift
+//  TabBarViewModel.swift
 //  CryptoTracker
 //
 //  Created by Константин Клинов on 02/07/25.
 //
 
 import Foundation
+import UserNotifications
 
 @MainActor
-final class MainViewModel: ObservableObject {
+final class TabBarViewModel: ObservableObject {
     @Published var isLoading: Bool = true
     @Published var selectedTab: Int = 0
     @Published var showOfflineMessage: Bool = false
@@ -22,7 +23,8 @@ final class MainViewModel: ObservableObject {
 
     private let monitor = NetworkMonitor.shared
     private var previousConnectionState: Bool = true
-    private var preloadTask: Task<Void, Never>? // Tracks preloading task
+    private var preloadTask: Task<Void, Never>?
+    private var priceCheckTask: Task<Void, Never>?
 
     init(
         networkService: NetworkServiceProtocol,
@@ -56,7 +58,9 @@ final class MainViewModel: ObservableObject {
                         if isConnected {
                             preloadTask?.cancel()
                             startPreloading(fromPage: 1)
+                            startPriceChangeMonitoring()
                         } else {
+                            stopPriceChangeMonitoring()
                             showOfflineMessage = true
 
                             Task {
@@ -73,7 +77,7 @@ final class MainViewModel: ObservableObject {
     }
 
     func startPreloading(fromPage pageStart: Int = 1) {
-        preloadTask?.cancel() // Cancel old task
+        preloadTask?.cancel()
 
         preloadTask = Task {
             var page = pageStart
@@ -101,18 +105,89 @@ final class MainViewModel: ObservableObject {
                 }
 
                 page += 1
-                try? await Task.sleep(nanoseconds: 10 * 1_000_000_000)
+                try? await Task.sleep(nanoseconds: 100 * 1_000_000_000)
             }
         }
     }
 
     private func preload(page: Int) async {
         do {
-            let cryptos = try await networkService.fetchCryptocurrencies(page: page, sortBy: .marketCap)
-            DataStorageService.shared.save(cryptos)
-            print("✅ Successfully preloaded page \(page) with \(cryptos.count) cryptocurrencies.")
+            let newCryptos = try await networkService.fetchCryptocurrencies(page: page, sortBy: .marketCap)
+            DataStorageService.shared.save(newCryptos)
+            print("✅ Successfully preloaded page \(page) with \(newCryptos.count) cryptocurrencies.")
         } catch {
             print("❌ Failed to preload page \(page): \(error.localizedDescription)")
         }
     }
+    
+    private func startPriceChangeMonitoring() {
+        priceCheckTask?.cancel()
+
+        priceCheckTask = Task {
+            while !Task.isCancelled {
+                await checkFavoritePriceChangesAndNotify()
+                try? await Task.sleep(nanoseconds: 10 * 1_000_000_000)
+            }
+        }
+    }
+
+    private func stopPriceChangeMonitoring() {
+        priceCheckTask?.cancel()
+        priceCheckTask = nil
+    }
+    
+    func checkFavoritePriceChangesAndNotify() async {
+        let favoriteIDs = favoritesService.getFavorites()
+        guard !favoriteIDs.isEmpty else { return }
+
+        let oldFavotireCryptos = DataStorageService.shared.getFavoriteCryptocurrencies(ids: favoriteIDs)
+
+        // Convert to dictionary for fast lookup
+        let oldPriceMap: [String: Double] = Dictionary(uniqueKeysWithValues: oldFavotireCryptos.map {
+            ($0.id, $0.currentPrice)
+        })
+
+        do {
+            // Fetch updated prices from network
+            let updatedCryptos = try await networkService.fetchCryptocurrenciesByIds(ids: favoriteIDs)
+
+            for crypto in updatedCryptos {
+                guard let oldPrice = oldPriceMap[crypto.id], oldPrice > 0 else { continue }
+
+                let newPrice = crypto.currentPrice
+                let percentageChange = abs((newPrice - oldPrice) / oldPrice)
+
+                if percentageChange >= 0.01 {
+                    sendLocalNotification(
+                        title: "\(crypto.name) Price Alert",
+                        body: "\(crypto.symbol.uppercased()) changed by \(String(format: "%.2f", percentageChange * 100))%"
+                    )
+                }
+            }
+
+        } catch {
+            print("❌ Failed to fetch updated prices: \(error.localizedDescription)")
+        }
+    }
+    
+    func sendLocalNotification(title: String, body: String) {
+        let content = UNMutableNotificationContent()
+        content.title = title
+        content.body = body
+        content.sound = .default
+
+        // Show notification immediately
+        let request = UNNotificationRequest(
+            identifier: UUID().uuidString,
+            content: content,
+            trigger: nil
+        )
+
+        UNUserNotificationCenter.current().add(request) { error in
+            if let error = error {
+                print("❌ Failed to schedule notification: \(error.localizedDescription)")
+            }
+        }
+    }
+
 }

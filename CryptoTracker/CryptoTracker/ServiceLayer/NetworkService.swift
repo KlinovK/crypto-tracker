@@ -11,6 +11,7 @@ protocol NetworkServiceProtocol {
     func fetchCryptocurrencies(page: Int, sortBy: SortOption) async throws -> [Cryptocurrency]
     func searchCryptocurrencies(query: String) async throws -> [Cryptocurrency]
     func fetchPriceHistory(coinId: String, days: String) async throws -> [PricePoint]
+    func fetchCryptocurrenciesByIds(ids: [String]) async throws -> [Cryptocurrency] // ← Add this
 }
 
 // MARK: - NetworkService
@@ -99,6 +100,21 @@ class NetworkService: NetworkServiceProtocol {
         let data = try await performRequest(url: url)
         
         return try parsePriceHistory(from: data)
+    }
+    
+    public func fetchCryptocurrenciesByIds(ids: [String]) async throws -> [Cryptocurrency] {
+        guard !ids.isEmpty else { return [] }
+
+        let endpoint = "/coins/markets"
+        let joinedIDs = ids.joined(separator: ",")
+        let queryItems = [
+            URLQueryItem(name: "vs_currency", value: Constants.currency),
+            URLQueryItem(name: "ids", value: joinedIDs)
+        ]
+
+        let url = try buildURL(endpoint: endpoint, queryItems: queryItems)
+        let data = try await performRequestWithRetry(url: url)
+        return try decode([Cryptocurrency].self, from: data)
     }
 }
 
