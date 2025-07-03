@@ -34,7 +34,7 @@ private extension AppDelegate {
         appearance.configureWithOpaqueBackground()
         appearance.backgroundColor = .gray
 
-        let normalColor: UIColor = .gray
+        let normalColor: UIColor = .white
         let selectedColor: UIColor = .blue
 
         appearance.stackedLayoutAppearance.normal.iconColor = normalColor

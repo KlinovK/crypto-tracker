@@ -92,7 +92,7 @@ struct CryptocurrencyDetailView: View {
                 
                 HStack(alignment: .bottom, spacing: 12) {
                     Text("$\(viewModel.cryptocurrency.currentPrice, specifier: "%.2f")")
-                        .font(.system(size: 36, weight: .bold, design: .rounded))
+                        .font(.system(size: 26, weight: .bold, design: .rounded))
                     
                     if let change = viewModel.cryptocurrency.priceChangePercentage24h {
                         HStack(spacing: 4) {

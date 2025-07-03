@@ -66,12 +66,18 @@ final class DataStorageService {
             return []
         }
     }
-
-    /// Returns the count of cryptocurrency entities matching the given predicate.
-    func countCryptocurrencies(with predicate: NSPredicate? = nil) throws -> Int {
+    
+    func fetchFavoriteCryptocurrencies(ids: [String]) -> [Cryptocurrency] {
         let request: NSFetchRequest<CryptocurrencyEntity> = CryptocurrencyEntity.fetchRequest()
-        request.predicate = predicate
-        return try context.count(for: request)
+        request.predicate = NSPredicate(format: "id IN %@", ids)
+
+        do {
+            let entities = try context.fetch(request)
+            return entities.compactMap { Cryptocurrency(entity: $0) }
+        } catch {
+            print("❌ Failed to fetch favorite cryptocurrencies: \(error.localizedDescription)")
+            return []
+        }
     }
 
     // MARK: - Deleting
@@ -102,19 +108,6 @@ final class DataStorageService {
             } catch {
                 print("❌ Failed to save cryptocurrencies: \(error.localizedDescription)")
             }
-        }
-    }
-    
-    func getFavoriteCryptocurrencies(ids: [String]) -> [Cryptocurrency] {
-        let request: NSFetchRequest<CryptocurrencyEntity> = CryptocurrencyEntity.fetchRequest()
-        request.predicate = NSPredicate(format: "id IN %@", ids)
-
-        do {
-            let entities = try context.fetch(request)
-            return entities.compactMap { Cryptocurrency(entity: $0) }
-        } catch {
-            print("❌ Failed to fetch favorite cryptocurrencies: \(error.localizedDescription)")
-            return []
         }
     }
 }

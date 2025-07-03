@@ -61,7 +61,7 @@ final class PriceChangeMonitor: PriceMonitorProtocol {
         task = Task {
             while !Task.isCancelled {
                 try? await Task.sleep(nanoseconds: delay)
-                await checkPrices()
+                await checkPricesAndSendLocalNotificationIfNeeded()
             }
         }
     }
@@ -75,10 +75,10 @@ final class PriceChangeMonitor: PriceMonitorProtocol {
     // MARK: - Private Methods
 
     /// Checks the current prices of favorite cryptocurrencies and sends notifications
-    /// if a price has changed by more than 1% compared to the last saved price.
-    private func checkPrices() async {
+    /// if a price has changed by more than 5% compared to the last saved price.
+    private func checkPricesAndSendLocalNotificationIfNeeded() async {
         let ids = favoritesService.getFavorites()
-        let oldData = DataStorageService.shared.getFavoriteCryptocurrencies(ids: ids)
+        let oldData = DataStorageService.shared.fetchFavoriteCryptocurrencies(ids: ids)
         let oldMap = Dictionary(uniqueKeysWithValues: oldData.map { ($0.id, $0.currentPrice) })
 
         do {

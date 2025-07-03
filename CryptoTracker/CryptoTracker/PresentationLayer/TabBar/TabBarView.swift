@@ -18,7 +18,7 @@ struct TabBarView: View {
     // MARK: - Initialization
 
     init(
-        networkService: NetworkServiceProtocol = NetworkService(),
+        networkService: NetworkServiceProtocol = NetworkService(httpClient: URLSessionClient()),
         favoritesService: FavoritesServiceProtocol = FavoritesService()
     ) {
         let listVM = CryptocurrencyListViewModel(
